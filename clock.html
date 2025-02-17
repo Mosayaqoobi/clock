@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Clock/Timer/Stopwatch/Countdown</title>
+    
+    <style>
+        /* General Styling */
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        /* Container Styling */
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+        }
+
+        /* Clock Styling */
+        #current-time {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        /* Timer & Countdown Styling */
+        input, button {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            text-align: center;
+        }
+
+        input[type="datetime-local"] {
+            width: 90%;
+            padding: 5px;
+        }
+
+        #timer-display, #countdown-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* Stopwatch Styling */
+        #stopwatch-display {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        /* Button Styling */
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+
+    <script>
+        "use strict";
+
+        class Ticker {
+            constructor() {
+                if (Ticker.instance) {
+                    throw new Error("Ticker is a singleton.");
+                }
+                Ticker.instance = this;
+                this.observers = [];
+                this.running = false;
+            }
+
+            addObserver(observer) {
+                this.observers.push(observer);
+            }
+
+            notify() {
+                this.observers.forEach(observer => observer.update());
+            }
+
+            start() {
+                if (this.running) return;
+                this.running = true;
+                this.tick();
+            }
+
+            tick() {
+                this.notify();
+                setTimeout(() => this.tick(), 1000);
+            }
+        }
+
+        class Clock {
+            constructor() {
+                this.element = document.getElementById("current-time");
+                ticker.addObserver(this);
+            }
+
+            update() {
+                const now = new Date();
+                this.element.textContent = now.toLocaleTimeString();
+            }
+        }
+
+        class Timer {
+            constructor() {
+                this.minutesInput = document.getElementById("timer-minutes");
+                this.secondsInput = document.getElementById("timer-seconds");
+                this.checkbox = document.getElementById("timer-checkbox");
+                this.display = document.getElementById("timer-display");
+
+                this.timeLeft = 0;
+                this.running = false;
+
+                this.checkbox.addEventListener("change", () => this.toggle());
+                ticker.addObserver(this);
+            }
+
+            toggle() {
+                if (this.checkbox.checked) {
+                    this.timeLeft = (parseInt(this.minutesInput.value) || 0) * 60 +
+                                   (parseInt(this.secondsInput.value) || 0);
+                    this.minutesInput.disabled = true;
+                    this.secondsInput.disabled = true;
+                    this.running = true;
+                } else {
+                    this.running = false;
+                    this.display.textContent = "Timer stopped";
+                    this.minutesInput.disabled = false;
+                    this.secondsInput.disabled = false;
+                }
+            }
+
+            update() {
+                if (!this.running || this.timeLeft <= 0) return;
+                this.timeLeft--;
+                this.display.textContent = this.formatTime();
+                if (this.timeLeft === 0) this.display.textContent = "Time's Up!";
+            }
+
+            formatTime() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+            }
+        }
+
+        class Stopwatch {
+            constructor() {
+                this.display = document.getElementById("stopwatch-display");
+                this.startBtn = document.getElementById("stopwatch-start");
+                this.stopBtn = document.getElementById("stopwatch-stop");
+                this.resetBtn = document.getElementById("stopwatch-reset");
+
+                this.timeElapsed = 0;
+                this.running = false;
+
+                this.startBtn.addEventListener("click", () => this.start());
+                this.stopBtn.addEventListener("click", () => this.stop());
+                this.resetBtn.addEventListener("click", () => this.reset());
+
+                ticker.addObserver(this);
+            }
+
+            start() {
+                this.running = true;
+                this.startBtn.disabled = true;
+                this.stopBtn.disabled = false;
+            }
+
+            stop() {
+                this.running = false;
+                this.startBtn.disabled = false;
+                this.stopBtn.disabled = true;
+            }
+
+            reset() {
+                this.timeElapsed = 0;
+                this.update();
+            }
+
+            update() {
+                if (this.running) this.timeElapsed++;
+                this.display.textContent = new Date(this.timeElapsed * 1000).toISOString().substr(11, 12);
+            }
+        }
+
+        class Countdown {
+            constructor() {
+                this.input = document.getElementById("countdown-input");
+                this.display = document.getElementById("countdown-display");
+
+                this.input.addEventListener("change", () => this.startCountdown());
+                ticker.addObserver(this);
+            }
+
+            startCountdown() {
+                this.targetTime = new Date(this.input.value).getTime();
+            }
+
+            update() {
+                if (!this.targetTime) return;
+                const now = new Date().getTime();
+                const diff = this.targetTime - now;
+
+                if (diff < 0) {
+                    this.display.textContent = "Time's up!";
+                    return;
+                }
+
+                const seconds = Math.floor((diff / 1000) % 60);
+                const minutes = Math.floor((diff / (1000 * 60)) % 60);
+                const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+                this.display.textContent = `${days} days ${hours} hours ${minutes} minutes ${seconds} seconds remaining`;
+            }
+        }
+
+        function main() {
+            window.ticker = new Ticker();
+            ticker.start();
+
+            new Clock();
+            new Timer();
+            new Stopwatch();
+            new Countdown();
+        }
+
+        window.addEventListener("load", main);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <section id="clock">
+            <h2>Clock</h2>
+            <p id="current-time"></p>
+        </section>
+
+        <section id="timer">
+            <h2>Timer</h2>
+            <input type="number" id="timer-minutes" placeholder="Minutes">
+            <input type="number" id="timer-seconds" placeholder="Seconds">
+            <input type="checkbox" id="timer-checkbox"> Start Timer
+            <p id="timer-display">Timer stopped</p>
+        </section>
+
+        <section id="stopwatch">
+            <h2>Stopwatch</h2>
+            <button id="stopwatch-start">Start</button>
+            <button id="stopwatch-stop" disabled>Stop</button>
+            <button id="stopwatch-reset">Reset</button>
+            <p id="stopwatch-display">0:00:00.000</p>
+        </section>
+
+        <section id="countdown">
+            <h2>Countdown</h2>
+            <input type="datetime-local" id="countdown-input">
+            <p id="countdown-display"></p>
+        </section>
+    </div>
+</body>
+</html>
