@@ -6,7 +6,6 @@
     <title>JS Clock/Timer/Stopwatch/Countdown</title>
     
     <style>
-        /* General Styling */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
@@ -20,7 +19,6 @@
             color: #333;
         }
 
-        /* Container Styling */
         .container {
             display: flex;
             flex-wrap: wrap;
@@ -38,14 +36,11 @@
             text-align: center;
         }
 
-        /* Clock Styling */
         #current-time {
             font-size: 2em;
             font-weight: bold;
             color: #007bff;
         }
-
-        /* Timer & Countdown Styling */
         input, button {
             padding: 8px;
             margin: 5px;
@@ -70,14 +65,12 @@
             margin-top: 10px;
         }
 
-        /* Stopwatch Styling */
         #stopwatch-display {
             font-size: 1.5em;
             font-weight: bold;
             color: #28a745;
         }
 
-        /* Button Styling */
         button {
             background: #007bff;
             color: white;
@@ -102,8 +95,9 @@
         class Ticker {
             constructor() {
                 if (Ticker.instance) {
-                    throw new Error("Ticker is a singleton.");
+                    throw new Error("Ticker already exists! Use the existing instance.");
                 }
+
                 Ticker.instance = this;
                 this.observers = [];
                 this.running = false;
@@ -118,7 +112,10 @@
             }
 
             start() {
-                if (this.running) return;
+                if (this.running){
+                    return;
+                }
+
                 this.running = true;
                 this.tick();
             }
@@ -132,12 +129,12 @@
         class Clock {
             constructor() {
                 this.element = document.getElementById("current-time");
-                ticker.addObserver(this);
+                ticker.addObserver(this);   //adds itself as an observer
             }
 
             update() {
-                const now = new Date();
-                this.element.textContent = now.toLocaleTimeString();
+                const thisDay = new Date();
+                this.element.textContent = thisDay.toLocaleTimeString();    //show the current time
             }
         }
 
@@ -158,26 +155,32 @@
             toggle() {
                 if (this.checkbox.checked) {
                     this.timeLeft = (parseInt(this.minutesInput.value) || 0) * 60 +
-                                   (parseInt(this.secondsInput.value) || 0);
+                                    (parseInt(this.secondsInput.value) || 0);
                     this.minutesInput.disabled = true;
                     this.secondsInput.disabled = true;
                     this.running = true;
                 } else {
                     this.running = false;
-                    this.display.textContent = "Timer stopped";
-                    this.minutesInput.disabled = false;
+                    this.display.textContent = "Timer stopped"; //display the message
+                    this.minutesInput.disabled = false; //allow editing for the inputs once stopped
                     this.secondsInput.disabled = false;
                 }
             }
 
             update() {
-                if (!this.running || this.timeLeft <= 0) return;
+                if (!this.running || this.timeLeft <= 0) {
+                    return;
+                }
                 this.timeLeft--;
+
                 this.display.textContent = this.formatTime();
-                if (this.timeLeft === 0) this.display.textContent = "Time's Up!";
+
+                if (this.timeLeft === 0) {
+                this.display.textContent = "Time's Up!";
+                }
             }
 
-            formatTime() {
+            formatTime() {  //format the timer displayed
                 const minutes = Math.floor(this.timeLeft / 60);
                 const seconds = this.timeLeft % 60;
                 return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -187,74 +190,127 @@
         class Stopwatch {
             constructor() {
                 this.display = document.getElementById("stopwatch-display");
-                this.startBtn = document.getElementById("stopwatch-start");
-                this.stopBtn = document.getElementById("stopwatch-stop");
-                this.resetBtn = document.getElementById("stopwatch-reset");
+                this.startButton = document.getElementById("stopwatch-start");
+                this.stopButton = document.getElementById("stopwatch-stop");
+                this.resetButton = document.getElementById("stopwatch-reset");
 
-                this.timeElapsed = 0;
+                this.timeElapsed = 0;  // total ellapsed (in milliseconds)
                 this.running = false;
+                this.lastUpdateTime = 0;  //last update of the timestamp
 
-                this.startBtn.addEventListener("click", () => this.start());
-                this.stopBtn.addEventListener("click", () => this.stop());
-                this.resetBtn.addEventListener("click", () => this.reset());
+                this.startButton.addEventListener("click", () => this.start());
+                this.stopButton.addEventListener("click", () => this.stop());
+                this.resetButton.addEventListener("click", () => this.reset());
 
-                ticker.addObserver(this);
+                this.updateDisplay();
             }
 
             start() {
-                this.running = true;
-                this.startBtn.disabled = true;
-                this.stopBtn.disabled = false;
+                if (!this.running) {
+                    this.running = true;
+                    this.lastUpdateTime = Date.now();
+                    this.startButton.disabled = true;
+                    this.stopButton.disabled = false;
+                    this.run();
+                }
             }
 
             stop() {
-                this.running = false;
-                this.startBtn.disabled = false;
-                this.stopBtn.disabled = true;
+                if (this.running) {
+                    this.running = false;
+                    this.timeElapsed += Date.now() - this.lastUpdateTime; //update total time
+                    this.startButton.disabled = false;
+                    this.stopButton.disabled = true;
+                }
             }
 
             reset() {
+                this.stop();  //stop before resetting
                 this.timeElapsed = 0;
-                this.update();
+                this.updateDisplay();
             }
 
-            update() {
-                if (this.running) this.timeElapsed++;
-                this.display.textContent = new Date(this.timeElapsed * 1000).toISOString().substr(11, 12);
+            run() {
+                if (this.running) {
+                    const now = Date.now();
+                    this.timeElapsed += now - this.lastUpdateTime;
+                    this.lastUpdateTime = now;
+
+                    this.updateDisplay();
+                    setTimeout(() => this.run(), 10); //update every 10ms
+                }
             }
-        }
+
+            updateDisplay() {
+                const milliseconds = this.timeElapsed % 1000;
+                const totalSeconds = Math.floor(this.timeElapsed / 1000);
+                const seconds = totalSeconds % 60;
+                const minutes = Math.floor((totalSeconds / 60) % 60);
+                const hours = Math.floor(totalSeconds / 3600);
+
+                this.display.textContent = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(3, "0")}`;
+            }
+            update() {
+                if (this.running) {
+                    const now = Date.now();
+                    this.timeElapsed += now - this.lastUpdateTime;
+                    this.lastUpdateTime = now;
+                }
+                this.updateDisplay();
+            }
+    }
 
         class Countdown {
             constructor() {
-                this.input = document.getElementById("countdown-input");
+                this.dateInput = document.getElementById("countdown-date");
+                this.timeInput = document.getElementById("countdown-time");
+                this.startButton = document.getElementById("countdown-start");
                 this.display = document.getElementById("countdown-display");
+                this.message = document.getElementById("countdown-message");
 
-                this.input.addEventListener("change", () => this.startCountdown());
+                this.targetTime = null;
+
+                this.startButton.addEventListener("click", () => this.startCountdown());
                 ticker.addObserver(this);
             }
 
             startCountdown() {
-                this.targetTime = new Date(this.input.value).getTime();
+                const selectedDate = this.dateInput.value;
+                const selectedTime = this.timeInput.value;
+
+                if (!selectedDate || !selectedTime) {
+                    this.display.textContent = "Please select a valid date and time.";
+                    return;
+                }
+
+                this.targetTime = new Date(`${selectedDate}T${selectedTime}`).getTime();
+                this.message.style.display = "none";
             }
 
             update() {
                 if (!this.targetTime) return;
+                
                 const now = new Date().getTime();
-                const diff = this.targetTime - now;
+                let diff = this.targetTime - now;
+                let past = diff < 0;
 
-                if (diff < 0) {
+                if (past) diff = Math.abs(diff); //absolute time difference
+
+                let seconds = Math.floor((diff / 1000) % 60);
+                let minutes = Math.floor((diff / (1000 * 60)) % 60);
+                let hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                let days = Math.floor((diff / (1000 * 60 * 60 * 24)) % 30);
+                let months = Math.floor((diff / (1000 * 60 * 60 * 24 * 30)) % 12);
+                let years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365));
+
+                if (diff === 0) {
                     this.display.textContent = "Time's up!";
-                    return;
+                    this.message.style.display = "block"; //show the hidden message
+                } else {
+                    this.display.textContent = `${years} years ${months} months ${days} days ${hours} hours ${minutes} minutes ${seconds} seconds ${past ? "ago" : "remaining"}`;
                 }
-
-                const seconds = Math.floor((diff / 1000) % 60);
-                const minutes = Math.floor((diff / (1000 * 60)) % 60);
-                const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-                this.display.textContent = `${days} days ${hours} hours ${minutes} minutes ${seconds} seconds remaining`;
             }
-        }
+    }
 
         function main() {
             window.ticker = new Ticker();
@@ -294,8 +350,11 @@
 
         <section id="countdown">
             <h2>Countdown</h2>
-            <input type="datetime-local" id="countdown-input">
+            <input type="date" id="countdown-date">
+            <input type="time" id="countdown-time">
+            <button id="countdown-start">Start Countdown</button>
             <p id="countdown-display"></p>
+            <p id="countdown-message" style="display: none; font-weight: bold; color: red;">Countdown Completed!</p>
         </section>
     </div>
 </body>
